@@ -6,10 +6,10 @@ import torch
 import torch.nn.functional as F
 from torchvision.transforms import Compose
 import subprocess, shlex
-import time
 
 from depth_anything.dpt import DepthAnything
 from depth_anything.util.transform import Resize, NormalizeImage, PrepareForNet
+from depth_anything.util.colormap import colormap_exists
 
 
 if __name__ == '__main__':
@@ -19,8 +19,14 @@ if __name__ == '__main__':
     parser.add_argument('--encoder', type=str, default='vitl', choices=['vits', 'vitb', 'vitl'])
     parser.add_argument('--only-depth', action='store_true', help="Output depth map only, no video")
     parser.add_argument('--with-sound', action='store_true', help="Add original audio-streams to output using ffmpeg")
+    parser.add_argument('--colormap', type=str, default='inferno', help="specify which opencv colormap you want")
 
     args = parser.parse_args()
+
+    # set colormap
+    colormap = cv2.COLORMAP_INFERNO #default
+    if colormap_exists(args.colormap):
+        colormap = getattr(cv2, "COLORMAP_" + args.colormap.upper())
 
     margin_width = 50
 
@@ -87,7 +93,7 @@ if __name__ == '__main__':
             depth = (depth - depth.min()) / (depth.max() - depth.min()) * 255.0
             
             depth = depth.cpu().numpy().astype(np.uint8)
-            depth_color = cv2.applyColorMap(depth, cv2.COLORMAP_INFERNO)
+            depth_color = cv2.applyColorMap(depth, colormap)
             
             split_region = np.ones((frame_height, margin_width, 3), dtype=np.uint8) * 255
             combined_frame = depth_color if args.only_depth else cv2.hconcat([raw_frame, split_region, depth_color])
@@ -106,9 +112,6 @@ if __name__ == '__main__':
             # Execute the command
             result = subprocess.run(command, capture_output=True, text=True)
 
-            # remove video without sound
-            os.remove(output_path)
-
             # Check if the command was successful
             if result.returncode == 0:
                 # Command executed successfully, print output
@@ -116,3 +119,6 @@ if __name__ == '__main__':
             else:
                 # Command failed, print error message
                 print("Error executing command:\n", result.stderr)
+
+            # remove video without sound
+            os.remove(output_path)
