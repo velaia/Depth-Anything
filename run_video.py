@@ -103,11 +103,11 @@ if __name__ == '__main__':
             command = f"ffmpeg -y -i \"{filename}\" -i \"{output_path}\" -map 0:a -map 1:v:0 -c:v copy \"{output_sound_path}\""
             command = shlex.split(command)
 
-
-            print(" ".join(command))
-
             # Execute the command
             result = subprocess.run(command, capture_output=True, text=True)
+
+            # remove video without sound
+            os.remove(output_path)
 
             # Check if the command was successful
             if result.returncode == 0:
