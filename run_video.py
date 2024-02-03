@@ -5,6 +5,8 @@ import os
 import torch
 import torch.nn.functional as F
 from torchvision.transforms import Compose
+import subprocess, shlex
+import time
 
 from depth_anything.dpt import DepthAnything
 from depth_anything.util.transform import Resize, NormalizeImage, PrepareForNet
@@ -16,10 +18,9 @@ if __name__ == '__main__':
     parser.add_argument('--outdir', type=str, default='./vis_video_depth')
     parser.add_argument('--encoder', type=str, default='vitl', choices=['vits', 'vitb', 'vitl'])
     parser.add_argument('--only-depth', action='store_true', help="Output depth map only, no video")
-
+    parser.add_argument('--with-sound', action='store_true', help="Add original audio-streams to output using ffmpeg")
 
     args = parser.parse_args()
-    print(f"{args.only_depth=}")
 
     margin_width = 50
 
@@ -59,14 +60,14 @@ if __name__ == '__main__':
     
     for k, filename in enumerate(filenames):
         print('Progress {:}/{:},'.format(k+1, len(filenames)), 'Processing', filename)
-        
+
         raw_video = cv2.VideoCapture(filename)
         frame_width, frame_height = int(raw_video.get(cv2.CAP_PROP_FRAME_WIDTH)), int(raw_video.get(cv2.CAP_PROP_FRAME_HEIGHT))
         frame_rate = int(raw_video.get(cv2.CAP_PROP_FPS))
         output_width = frame_width if args.only_depth else frame_width * 2 + margin_width
         
-        filename = os.path.basename(filename)
-        output_path = os.path.join(args.outdir, filename[:filename.rfind('.')] + '_video_depth.mp4')
+        filename_base = os.path.basename(filename)
+        output_path = os.path.join(args.outdir, filename_base[:filename_base.rfind('.')] + '_video_depth.mp4')
         out = cv2.VideoWriter(output_path, cv2.VideoWriter_fourcc(*"mp4v"), frame_rate, (output_width, frame_height))
         
         while raw_video.isOpened():
@@ -95,3 +96,23 @@ if __name__ == '__main__':
         
         raw_video.release()
         out.release()
+
+        if args.with_sound:
+            output_sound_path = os.path.join(args.outdir,
+                                             filename_base[:filename_base.rfind('.')] + '_video_depth_sound.mp4')
+            command = f"ffmpeg -y -i \"{filename}\" -i \"{output_path}\" -map 0:a -map 1:v:0 -c:v copy \"{output_sound_path}\""
+            command = shlex.split(command)
+
+
+            print(" ".join(command))
+
+            # Execute the command
+            result = subprocess.run(command, capture_output=True, text=True)
+
+            # Check if the command was successful
+            if result.returncode == 0:
+                # Command executed successfully, print output
+                print("Command output:\n", result.stdout)
+            else:
+                # Command failed, print error message
+                print("Error executing command:\n", result.stderr)
