@@ -15,13 +15,16 @@ if __name__ == '__main__':
     parser.add_argument('--video-path', type=str)
     parser.add_argument('--outdir', type=str, default='./vis_video_depth')
     parser.add_argument('--encoder', type=str, default='vitl', choices=['vits', 'vitb', 'vitl'])
-    
+    parser.add_argument('--only-depth', action='store_true', help="Output depth map only, no video")
+
+
     args = parser.parse_args()
-    
+    print(f"{args.only_depth=}")
+
     margin_width = 50
 
-    DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
-    
+    DEVICE = 'cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu'
+
     depth_anything = DepthAnything.from_pretrained('LiheYoung/depth_anything_{}14'.format(args.encoder)).to(DEVICE).eval()
     
     total_params = sum(param.numel() for param in depth_anything.parameters())
@@ -60,7 +63,7 @@ if __name__ == '__main__':
         raw_video = cv2.VideoCapture(filename)
         frame_width, frame_height = int(raw_video.get(cv2.CAP_PROP_FRAME_WIDTH)), int(raw_video.get(cv2.CAP_PROP_FRAME_HEIGHT))
         frame_rate = int(raw_video.get(cv2.CAP_PROP_FPS))
-        output_width = frame_width * 2 + margin_width
+        output_width = frame_width if args.only_depth else frame_width * 2 + margin_width
         
         filename = os.path.basename(filename)
         output_path = os.path.join(args.outdir, filename[:filename.rfind('.')] + '_video_depth.mp4')
@@ -86,7 +89,7 @@ if __name__ == '__main__':
             depth_color = cv2.applyColorMap(depth, cv2.COLORMAP_INFERNO)
             
             split_region = np.ones((frame_height, margin_width, 3), dtype=np.uint8) * 255
-            combined_frame = cv2.hconcat([raw_frame, split_region, depth_color])
+            combined_frame = depth_color if args.only_depth else cv2.hconcat([raw_frame, split_region, depth_color])
             
             out.write(combined_frame)
         
