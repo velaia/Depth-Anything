@@ -9,7 +9,7 @@ import subprocess, shlex
 
 from depth_anything.dpt import DepthAnything
 from depth_anything.util.transform import Resize, NormalizeImage, PrepareForNet
-from depth_anything.util.colormap import colormap_exists
+from depth_anything.util.colormap import get_colormap
 
 
 if __name__ == '__main__':
@@ -24,9 +24,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # set colormap
-    colormap = cv2.COLORMAP_INFERNO #default
-    if colormap_exists(args.colormap):
-        colormap = getattr(cv2, "COLORMAP_" + args.colormap.upper())
+    colormap = get_colormap(args.colormap)
 
     margin_width = 50
 

@@ -9,15 +9,20 @@ from tqdm import tqdm
 
 from depth_anything.dpt import DepthAnything
 from depth_anything.util.transform import Resize, NormalizeImage, PrepareForNet
-
+from depth_anything.util.colormap import get_colormap
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--img-path', type=str)
     parser.add_argument('--outdir', type=str, default='./vis_depth')
     parser.add_argument('--encoder', type=str, default='vitl', choices=['vits', 'vitb', 'vitl'])
+    parser.add_argument('--only-depth', action='store_true', help="Output depth map only, no video")
+    parser.add_argument('--colormap', type=str, default='inferno', help="specify which opencv colormap you want")
     
     args = parser.parse_args()
+
+    # set colormap
+    colormap = get_colormap(args.colormap)
     
     margin_width = 50
     caption_height = 60
@@ -71,30 +76,33 @@ if __name__ == '__main__':
         
         with torch.no_grad():
             depth = depth_anything(image)
-        
+
         depth = F.interpolate(depth[None], (h, w), mode='bilinear', align_corners=False)[0, 0]
         depth = (depth - depth.min()) / (depth.max() - depth.min()) * 255.0
         
         depth = depth.cpu().numpy().astype(np.uint8)
-        depth_color = cv2.applyColorMap(depth, cv2.COLORMAP_INFERNO)
-        
-        split_region = np.ones((raw_image.shape[0], margin_width, 3), dtype=np.uint8) * 255
-        combined_results = cv2.hconcat([raw_image, split_region, depth_color])
-        
-        caption_space = np.ones((caption_height, combined_results.shape[1], 3), dtype=np.uint8) * 255
-        captions = ['Raw image', 'Depth Anything']
-        segment_width = w + margin_width
-        for i, caption in enumerate(captions):
-            # Calculate text size
-            text_size = cv2.getTextSize(caption, font, font_scale, font_thickness)[0]
+        depth_color = cv2.applyColorMap(depth, colormap)
 
-            # Calculate x-coordinate to center the text
-            text_x = int((segment_width * i) + (w - text_size[0]) / 2)
+        if not args.only_depth:
+            split_region = np.ones((raw_image.shape[0], margin_width, 3), dtype=np.uint8) * 255
+            combined_results = cv2.hconcat([raw_image, split_region, depth_color])
 
-            # Add text caption
-            cv2.putText(caption_space, caption, (text_x, 40), font, font_scale, (0, 0, 0), font_thickness)
-        
-        final_result = cv2.vconcat([caption_space, combined_results])
+            caption_space = np.ones((caption_height, combined_results.shape[1], 3), dtype=np.uint8) * 255
+            captions = ['Raw image', 'Depth Anything']
+            segment_width = w + margin_width
+            for i, caption in enumerate(captions):
+                # Calculate text size
+                text_size = cv2.getTextSize(caption, font, font_scale, font_thickness)[0]
+
+                # Calculate x-coordinate to center the text
+                text_x = int((segment_width * i) + (w - text_size[0]) / 2)
+
+                # Add text caption
+                cv2.putText(caption_space, caption, (text_x, 40), font, font_scale, (0, 0, 0), font_thickness)
+
+            final_result = cv2.vconcat([caption_space, combined_results])
+        else:
+            final_result = depth_color
         
         filename = os.path.basename(filename)
         cv2.imwrite(os.path.join(args.outdir, filename[:filename.rfind('.')] + '_img_depth.png'), final_result)
