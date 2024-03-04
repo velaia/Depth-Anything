@@ -18,6 +18,7 @@ if __name__ == '__main__':
     parser.add_argument('--encoder', type=str, default='vitl', choices=['vits', 'vitb', 'vitl'])
     parser.add_argument('--only-depth', action='store_true', help="Output depth map only, no video")
     parser.add_argument('--colormap', type=str, default='inferno', help="specify which opencv colormap you want")
+    parser.add_argument('--one-channel', action='store_true', help="save as one-channel image")
     
     args = parser.parse_args()
 
@@ -102,7 +103,10 @@ if __name__ == '__main__':
 
             final_result = cv2.vconcat([caption_space, combined_results])
         else:
-            final_result = depth_color
+            if args.one_channel:
+                final_result = depth
+            else:
+                final_result = depth_color
         
         filename = os.path.basename(filename)
         cv2.imwrite(os.path.join(args.outdir, filename[:filename.rfind('.')] + '_img_depth.png'), final_result)
