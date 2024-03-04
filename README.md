@@ -1,3 +1,9 @@
+**Minor differences compared to main repo**:
+* Apple MPS support (if you have PYTORCH_ENABLE_MPS_FALLBACK=1 exported in your environment)
+* --only-depth:          Output depth map only, no video
+* --with-sound (run_video.py only):         Add original audio-streams to output using ffmpeg (ffmpeg must be installed or you'll get an error)
+* --colormap COLORMAP:   specify which opencv colormap you want (e.g. magma, rainbow, twilight; see [OpenCV colormaps](https://docs.opencv.org/3.4/d3/d50/group__imgproc__colormap.html) for full list)
+
 <div align="center">
 <h2>Depth Anything: Unleashing the Power of Large-Scale Unlabeled Data</h2>
 
