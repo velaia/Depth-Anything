@@ -1,6 +1,7 @@
 **Minor differences compared to main repo**:
 * Apple MPS support (if you have PYTORCH_ENABLE_MPS_FALLBACK=1 exported in your environment)
-* --only-depth:          Output depth map only, no video
+* --only-depth:          Output depth map only for run.py, no video
+* --one-channel          output one-channel gray PNG, together with --only-depth for images (run.py) only
 * --with-sound (run_video.py only):         Add original audio-streams to output using ffmpeg (ffmpeg must be installed or you'll get an error)
 * --colormap COLORMAP:   specify which opencv colormap you want (e.g. magma, rainbow, twilight; see [OpenCV colormaps](https://docs.opencv.org/3.4/d3/d50/group__imgproc__colormap.html) for full list)
 
